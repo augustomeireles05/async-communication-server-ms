@@ -1,0 +1,115 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: foodcompany-payment
+    ports:
+      - "3306:3306"
+    networks:
+      - demo
+
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    environment:
+      MONGO_INITDB_DATABASE: foodcompanyorder
+    ports:
+      - "27017:27017"
+    networks:
+      - demo
+
+  rabbit1:
+    image: rabbitmq:3.13-management
+    container_name: rabbit1
+    environment:
+      RABBIT_ERLANG_COOKIE: "demo_secrete"
+    hostname: rabbit1
+    networks:
+      - demo
+    ports:
+      - "8085:15672"
+      - "5672:5672"
+
+  rabbit2:
+    image: rabbitmq:3.13-management
+    container_name: rabbit2
+    environment:
+      RABBIT_ERLANG_COOKIE: "demo_secrete"
+    hostname: rabbit2
+    networks:
+      - demo
+    ports:
+      - "8086:15672"
+      - "5673:5672"
+
+  rabbit3:
+    image: rabbitmq:3.13-management
+    container_name: rabbit3
+    environment:
+      RABBIT_ERLANG_COOKIE: "demo_secrete"
+    hostname: rabbit3
+    networks:
+      - demo
+    ports:
+      - "8087:15672"
+      - "5674:5672"
+
+  payment-ms:
+    build:
+      context: ./payments
+      dockerfile: Dockerfile
+    container_name: payment-ms
+    networks:
+      - demo
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    depends_on:
+      - mysql
+      - rabbit1
+      - rabbit2
+      - rabbit3
+      - eureka-server
+
+  order-ms:
+    build:
+      context: ./order
+      dockerfile: Dockerfile
+    container_name: order-ms
+    networks:
+      - demo
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    depends_on:
+      - mongo
+      - rabbit1
+      - rabbit2
+      - rabbit3
+      - eureka-server
+
+  eureka-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: eureka-server
+    networks:
+      - demo
+    ports:
+      - "8761:8761"
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: gateway
+    networks:
+      - demo
+    depends_on:
+      - eureka-server
+    ports:
+      - "8083:8083"
+
+networks:
+  demo:
+    driver: bridge
